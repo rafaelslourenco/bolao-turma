@@ -504,8 +504,24 @@ function renderRegulamento() {
   </div>`;
 }
 function render() {
-  document.getElementById('app').innerHTML = currentUser ? renderMain() : renderLogin();
+  if (currentUser && userProfile && userProfile.needsName) {
+    document.getElementById('app').innerHTML = renderSetupName();
+  } else {
+    document.getElementById('app').innerHTML = currentUser ? renderMain() : renderLogin();
+  }
   bindEvents();
+}
+
+function renderSetupName() {
+  return '<div style="min-height:100vh;background:#FDF8F0;display:flex;align-items:center;justify-content:center;padding:1rem">'
+    + '<div style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;border:1px solid #eee;box-shadow:0 4px 24px rgba(232,71,42,.08)">'
+    + '<img src="https://rafaelslourenco.github.io/bolao-turma/logocopa.png" alt="Copa 2026" style="width:120px;height:auto;margin-bottom:1rem">'
+    + '<div style="font-size:18px;font-weight:600;color:#1a1a2e;margin-bottom:6px">Como quer ser chamado?</div>'
+    + '<div style="font-size:13px;color:#aaa;margin-bottom:1.5rem">Esse nome aparece no ranking e nos palpites de todos.</div>'
+    + '<input id="nomeInput" type="text" placeholder="seu apelido (ex: Cafu, Garga...)" style="width:100%;padding:10px 12px;border:1.5px solid #eee;border-radius:8px;font-size:14px;margin-bottom:1rem;outline:none;text-align:center">'
+    + '<button id="btnSalvarNome" style="width:100%;padding:11px;background:#E8472A;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Entrar no bolão</button>'
+    + '<p id="nomeErr" style="color:#e53e3e;font-size:12px;margin-top:8px;min-height:16px"></p>'
+    + '</div></div>';
 }
 
 // ── LOGIN ──
@@ -635,9 +651,18 @@ function renderPalpites() {
   const nomeMes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
   let h = '';
+
+  // Apostas especiais pendentes em destaque
+  if (espPend) {
+    h += '<div style="background:#FFF8E1;border:2px solid #FFE082;border-radius:10px;padding:12px 14px;margin-bottom:12px;cursor:pointer" onclick="document.querySelector(\'.tab[data-tab=especiais]\').click()">'
+      + '<div style="font-size:11px;font-weight:700;color:#E65100;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">⚠️ Apostas especiais pendentes</div>'
+      + '<div style="font-size:13px;color:#555">Você ainda não preencheu suas apostas especiais. Prazo: 13/06/2026 às 19:00. <span style="color:#E8472A;font-weight:600">Clique para preencher →</span></div>'
+      + '</div>';
+  }
+
   if (proximoBrasil) {
     h += '<div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border:2px solid #009C3B;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">'
-      + '<span style="font-size:22px">\uD83C\uDDE7\uD83C\uDDF7</span>'
+      + '<span style="font-size:22px">🇧🇷</span>'
       + '<div><div style="font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.06em">Próximo jogo do Brasil — vale 2×</div>'
       + '<div style="font-size:13px;font-weight:600;color:#1B5E20">' + proximoBrasil.time1 + ' × ' + proximoBrasil.time2 + ' · ' + proximoBrasil.data + ' às ' + proximoBrasil.hora + '</div>'
       + '</div></div>';
@@ -680,8 +705,66 @@ function renderEspeciais() {
     <div class="esp-item"><label>⚽ Artilheiro <span class="pts-tag">15pts</span></label>${sel('artilheiro',myBet.artilheiro,artilheiros)}</div>
     <div class="esp-item"><label>🇧🇷 Brasil eliminado na... <span class="pts-tag">15pts</span></label>${sel('brasil_fase',myBet.brasil_fase,fases)}</div>
   </div>
-  ${!fechado ? '<button class="btn-save" id="btnSalvarEsp">Salvar apostas especiais</button>' : '<p class="fechado-msg">⛔ Apostas especiais encerradas</p>'}
+  ${!fechado 
+    ? '<button class="btn-save" id="btnSalvarEsp">Salvar apostas especiais</button>'
+    : '<p class="fechado-msg">⛔ Prazo encerrado</p>'}
+  ${fechado ? renderTodasEspeciais() : ''}
   `;
+}
+
+function toggleEspView(v) {
+  document.getElementById('espViewPessoa').style.display = v==='pessoa'?'block':'none';
+  document.getElementById('espViewAposta').style.display = v==='aposta'?'block':'none';
+  document.getElementById('espBtnPessoa').style.background = v==='pessoa'?'#E8472A':'#fff';
+  document.getElementById('espBtnPessoa').style.color = v==='pessoa'?'#fff':'#666';
+  document.getElementById('espBtnAposta').style.background = v==='aposta'?'#E8472A':'#fff';
+  document.getElementById('espBtnAposta').style.color = v==='aposta'?'#fff':'#666';
+}
+
+function renderTodasEspeciais() {
+  const campos = [
+    {key:'campeao',label:'Campeão'},{key:'vice',label:'Vice'},
+    {key:'semi1',label:'Semi 1'},{key:'semi2',label:'Semi 2'},
+    {key:'artilheiro',label:'Artilheiro'},{key:'brasil_fase',label:'Brasil cai na...'}
+  ];
+  const parts = Object.entries(allUsers).map(([uid,u])=>({
+    uid, nome:u.nome||u.email?.split('@')[0]||'?', esp:allBets[uid]?.especiais||{}
+  }));
+  if(!parts.length) return '';
+  const colors=['#E8472A','#009C3B','#1565C0','#7B1FA2','#E65100','#00838F'];
+  const byPerson = parts.map(p=>{
+    const col=colors[p.nome.charCodeAt(0)%colors.length];
+    const init=p.nome.slice(0,2).toUpperCase();
+    return '<div style="background:#f9f6f0;border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      +'<div style="width:28px;height:28px;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#fff">'+init+'</div>'
+      +'<span style="font-size:13px;font-weight:500">'+p.nome+'</span>'
+      +(p.uid===currentUser.uid?'<span style="font-size:9px;color:#E8472A;background:#FFF0EE;padding:1px 5px;border-radius:4px">você</span>':'')
+      +'</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">'
+      +campos.map(c=>'<div style="background:#fff;border-radius:6px;padding:5px 7px;border:0.5px solid #eee">'
+        +'<div style="font-size:9px;color:#aaa;margin-bottom:2px">'+c.label+'</div>'
+        +'<div style="font-size:11px;font-weight:500;color:#333">'+(p.esp[c.key]||'—')+'</div></div>').join('')
+      +'</div></div>';
+  }).join('');
+  const byCategory = campos.map(c=>{
+    const chips=parts.map(p=>{
+      const val=p.esp[c.key]; if(!val) return null;
+      const eu=p.uid===currentUser.uid;
+      return '<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:'+(eu?'#FFF0EE':'#F0F0F0')+';color:'+(eu?'#E8472A':'#555')+'">'+p.nome+': <b>'+val+'</b></span>';
+    }).filter(Boolean).join('');
+    return '<div style="display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:start;padding:8px 0;border-bottom:0.5px solid #f0ebe0">'
+      +'<div style="font-size:11px;font-weight:500;color:#888;padding-top:3px">'+c.label+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:4px">'+(chips||'<span style="font-size:11px;color:#ccc">nenhum palpite</span>')+'</div></div>';
+  }).join('');
+  return '<div style="margin-top:16px">'
+    +'<div style="font-size:13px;font-weight:500;color:#1a1a2e;margin-bottom:10px">Palpites de todos</div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:12px">'
+    +'<button onclick="toggleEspView('pessoa')" id="espBtnPessoa" style="padding:4px 12px;border:0.5px solid #E8472A;border-radius:6px;background:#E8472A;color:#fff;font-size:11px;cursor:pointer">Por pessoa</button>'
+    +'<button onclick="toggleEspView('aposta')" id="espBtnAposta" style="padding:4px 12px;border:0.5px solid #ddd;border-radius:6px;background:#fff;color:#666;font-size:11px;cursor:pointer">Por aposta</button>'
+    +'</div>'
+    +'<div id="espViewPessoa">'+byPerson+'</div>'
+    +'<div id="espViewAposta" style="display:none">'+byCategory+'</div>'
+    +'</div>';
 }
 
 function renderGrupos() {
@@ -770,14 +853,14 @@ function renderJogoCard(jogo, fase) {
     if (palpites.length) outrosPalpites = `<div class="outros-palpites"><span class="outros-label">Palpites:</span> ${palpites.join('')}</div>`;
   }
 
-  return `<div class="jogo-card${fechado?' fechado':''}">
+  return `<div class="jogo-card${jogo.brasil?' brasil-card':''}${fechado?' fechado':''}">
     <div class="jogo-header">
       <span class="jogo-num">#${jogo.id}</span>
-      <span class="jogo-dt">${jogo.data} ${jogo.hora} (Brasília)</span>
+      <span class="jogo-dt">${jogo.hora} (Brasília)</span>
       <div class="jogo-tags">${tags.join('')}</div>
     </div>
     <div class="jogo-body">
-      <div class="jogo-times">${jogo.time1} <span class="vs">×</span> ${jogo.time2}</div>
+      <div class="jogo-times${jogo.brasil?' brasil-times':''}">${jogo.time1} <span class="vs">×</span> ${jogo.time2}${jogo.brasil?'<span class="pts2x" style="margin-left:8px">2×</span>':''}</div>
       <div class="jogo-bet">${betHtml}</div>
     </div>
     ${resultHtml}
@@ -898,6 +981,13 @@ function renderAdmin() {
 
 // ── BIND EVENTS ──
 function bindEvents() {
+  document.getElementById('btnSalvarNome')?.addEventListener('click', async () => {
+    const nome = document.getElementById('nomeInput')?.value?.trim();
+    if (!nome || nome.length < 2) { document.getElementById('nomeErr').textContent = 'Digite pelo menos 2 caracteres'; return; }
+    await updateDoc(doc(db, 'users', currentUser.uid), { nome, needsName: false });
+    userProfile = { ...userProfile, nome, needsName: false };
+    render();
+  });
   document.getElementById('btnGoogle')?.addEventListener('click', loginGoogle);
   document.getElementById('btnLogin')?.addEventListener('click', loginEmail);
   document.getElementById('btnCadastrar')?.addEventListener('click', cadastrar);
@@ -992,7 +1082,7 @@ async function ensureUserProfile(user, nomeOverride) {
   const adminStatus = ADMINS.includes(user.email);
   if (!snap.exists()) {
     const nome = nomeOverride || user.displayName || user.email.split('@')[0];
-    await setDoc(ref, { email: user.email, nome, isAdmin: adminStatus, createdAt: serverTimestamp() });
+    await setDoc(ref, { email: user.email, nome, isAdmin: adminStatus, createdAt: serverTimestamp(), needsName: true });
   } else if (adminStatus && !snap.data().isAdmin) {
     await updateDoc(ref, { isAdmin: true });
   }
@@ -1050,9 +1140,12 @@ async function salvarResultEspeciais() {
 }
 
 window.tornarAdmin = async (uid) => {
-  if (!isAdmin) return;
-  await updateDoc(doc(db,'users',uid), { isAdmin: true });
-  alert('Usuário promovido a admin!');
+  if (!isAdmin) { alert('Você não tem permissão.'); return; }
+  try {
+    await updateDoc(doc(db, 'users', uid), { isAdmin: true });
+    alert('✅ Promovido a admin!');
+    render();
+  } catch(e) { alert('Erro: ' + e.message); }
 };
 
 window.salvarResultado = salvarResultado;
