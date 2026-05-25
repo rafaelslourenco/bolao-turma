@@ -359,6 +359,31 @@ async function autoSaveFavoritos() {
   }
 }
 
+
+function renderRegulamento() {
+  return `<div class="section-card">
+    <div class="scard-title" style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Regulamento</div>
+    <p style="font-size:12px;color:#888;font-style:italic;margin-bottom:12px">Texto completo em breve — preparado pela organização com todo o humor que merece.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:#FFF3E0">
+        <th style="padding:5px 7px;text-align:left;border:1px solid #FFE0B2;color:#E65100">Tipo de acerto</th>
+        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">1a fase</th>
+        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">16avos</th>
+        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Oitavas</th>
+        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Quartas</th>
+        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Semi</th>
+        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Final</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Vencedor/empate</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">5</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">7</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">8</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">9</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">12</td></tr>
+        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Vencedor + gols 1 time</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">7</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">11</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">12</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">13</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">15</td></tr>
+        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Vencedor + diferença gols</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">7</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">11</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">12</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">13</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">15</td></tr>
+        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Placar exato</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">13</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">15</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">16</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">18</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">20</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#aaa;margin-top:8px">* Jogos do Brasil valem 2× em todas as categorias</p>
+  </div>`;
+}
 function render() {
   document.getElementById('app').innerHTML = currentUser ? renderMain() : renderLogin();
   bindEvents();
@@ -425,12 +450,15 @@ function renderMain() {
   </div>
   <div class="tabs">
     <button class="tab active" data-tab="apostas">Meus Palpites</button>
+    <button class="tab" data-tab="especiais">Apostas Especiais</button>
     <button class="tab" data-tab="ranking">Ranking</button>
     <button class="tab" data-tab="resultados">Resultados</button>
+    <button class="tab" data-tab="regulamento">Regulamento</button>
     ${isAdmin ? '<button class="tab" data-tab="admin">Admin</button>' : ''}
   </div>
+  <div id="pendingBanner"></div>
   <div id="tabContent" class="tab-content">
-    ${renderApostas()}
+    ${renderPalpites()}
   </div>
   <div style="position:relative;z-index:5;margin-top:1rem">
     <img src="https://rafaelslourenco.github.io/bolao-turma/turma.jpg" alt="Foto da turma" style="width:100%;height:160px;object-fit:cover;object-position:center 30%;display:block">
@@ -439,23 +467,77 @@ function renderMain() {
 }
 
 // ── ABA APOSTAS ──
-function renderApostas() {
-  return `
-  <div class="section-card">
-    <h2>🌟 Apostas Especiais</h2>
-    <p class="info-txt">Faça antes da Copa começar! (11/06/2026 às 16:00)</p>
-    ${renderEspeciais()}
-  </div>
-  <div class="section-card">
-    <h2>📋 Fase de Grupos</h2>
-    ${renderGrupos()}
-  </div>
-  <div class="section-card">
-    <h2>⚔️ Mata-Mata</h2>
-    <p class="info-txt">Os jogos aparecerão conforme as fases forem definidas.</p>
-    ${renderMataMata()}
-  </div>`;
+function parseDate(data, hora) {
+  const [d,m,y] = data.split('/');
+  const [h,mi] = hora.split(':');
+  return new Date(+y,+m-1,+d,+h,+mi);
 }
+
+
+
+function renderPalpites() {
+  const myBets = allBets[currentUser.uid] || {};
+
+  // Pending banner
+  const espFechado = new Date() >= new Date(2026,5,13,19,0);
+  const espPend = !espFechado && ['campeao','vice','semi1','semi2','artilheiro','brasil_fase'].some(k => !myBets.especiais?.[k]);
+  const pending = JOGOS_GRUPOS.filter(j => {
+    if (jogoFechado(j)) return false;
+    const b = myBets['jogo_' + j.id];
+    if (!j.especial) return !b || !b.confirmed;
+    return !b || b.g1 === undefined || b.g2 === undefined;
+  }).length;
+
+  setTimeout(() => {
+    const bannerEl = document.getElementById('pendingBanner');
+    if (bannerEl) {
+      if (pending > 0 || espPend) {
+        bannerEl.innerHTML = '<div class="pending-banner">⚠️ ' + [espPend ? 'Apostas especiais incompletas' : '', pending > 0 ? pending + ' jogo(s) sem palpite confirmado' : ''].filter(Boolean).join(' · ') + ' — confirme antes do prazo!</div>';
+      } else {
+        bannerEl.innerHTML = '';
+      }
+    }
+  }, 100);
+
+  // Next Brasil game
+  const now = new Date();
+  const proximoBrasil = JOGOS_GRUPOS.find(j => j.brasil && parseDate(j.data, j.hora) > now);
+
+  // Group by day
+  const dias = {};
+  JOGOS_GRUPOS.forEach(j => { if (!dias[j.data]) dias[j.data]=[]; dias[j.data].push(j); });
+  const diasOrdenados = Object.keys(dias).sort((a,b) => {
+    const [da,ma,ya]=a.split('/'); const [db,mb,yb]=b.split('/');
+    return new Date(+ya,+ma-1,+da)-new Date(+yb,+mb-1,+db);
+  });
+
+  const nomeDia = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const nomeMes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+  let h = '';
+  if (proximoBrasil) {
+    h += '<div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border:2px solid #009C3B;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">'
+      + '<span style="font-size:22px">\uD83C\uDDE7\uD83C\uDDF7</span>'
+      + '<div><div style="font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.06em">Próximo jogo do Brasil — vale 2×</div>'
+      + '<div style="font-size:13px;font-weight:600;color:#1B5E20">' + proximoBrasil.time1 + ' × ' + proximoBrasil.time2 + ' · ' + proximoBrasil.data + ' às ' + proximoBrasil.hora + '</div>'
+      + '</div></div>';
+  }
+
+  diasOrdenados.forEach(dia => {
+    const [d,m,y] = dia.split('/');
+    const dt = new Date(+y,+m-1,+d);
+    h += '<div class="day-label">' + nomeDia[dt.getDay()] + ' · ' + d + ' de ' + nomeMes[+m-1] + '</div>';
+    dias[dia].forEach(j => { h += renderJogoCard(j, 'grupo'); });
+  });
+
+  h += '<div class="section-card" style="margin-top:12px"><h2 style="font-size:14px;font-weight:700;margin-bottom:8px">⚔️ Mata-Mata</h2><p style="font-size:12px;color:#888">Aguardando definição dos classificados após a fase de grupos.</p>' + renderMataMata() + '</div>';
+  return h;
+}
+
+function renderApostas() {
+  return renderPalpites();
+}
+
 
 function renderEspeciais() {
   const fechado = new Date() >= new Date(2026,5,11,16,0);
@@ -695,11 +777,13 @@ function bindEvents() {
       document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
       t.classList.add('active');
       const tab = t.dataset.tab;
-      const content = document.getElementById('tabContent');
-      if (tab==='apostas') content.innerHTML = renderApostas();
-      else if (tab==='ranking') content.innerHTML = renderRanking();
-      else if (tab==='resultados') content.innerHTML = renderResultados();
-      else if (tab==='admin') content.innerHTML = renderAdmin();
+      const el = document.getElementById('tabContent');
+      if (tab==='apostas') el.innerHTML = renderPalpites();
+      else if (tab==='especiais') el.innerHTML = renderEspeciais();
+      else if (tab==='ranking') el.innerHTML = renderRanking();
+      else if (tab==='resultados') el.innerHTML = renderResultados();
+      else if (tab==='regulamento') el.innerHTML = renderRegulamento();
+      else if (tab==='admin') el.innerHTML = renderAdmin();
       bindInner();
     });
   });
