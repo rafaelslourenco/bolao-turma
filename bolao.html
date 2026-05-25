@@ -573,8 +573,7 @@ function initChat() {
 
   // Listen to chat messages
   if (chatUnsub) chatUnsub();
-  const { collection: col2, query: q2, orderBy: ob, limit: lim, onSnapshot: ons } = window._fb;
-  chatUnsub = ons(q2(col2(db, 'chat'), ob('ts', 'asc'), lim(100)), snap => {
+  chatUnsub = onSnapshot(query(collection(db, 'chat'), orderBy('ts', 'asc'), limit(100)), snap => {
     const el = document.getElementById('chatMsgs');
     if (!el) { chatUnsub(); return; }
     if (!snap.docs.length) { el.innerHTML = '<div style="text-align:center;color:#bbb;font-size:12px;padding:2rem">Seja o primeiro a mandar uma mensagem! 🎉</div>'; return; }
@@ -613,15 +612,15 @@ async function sendMsg() {
   if (!text) return;
   inp.value = '';
   const nome = userProfile?.nome || currentUser.email.split('@')[0];
-  await window._fb.addDoc(window._fb.col(db, 'chat'), {
-    text, uid: currentUser.uid, nome, ts: window._fb.sts(), type: 'text'
+  await addDoc(collection(db, 'chat'), {
+    text, uid: currentUser.uid, nome, ts: serverTimestamp(), type: 'text'
   });
 }
 
 async function sendReaction(emoji) {
   const nome = userProfile?.nome || currentUser.email.split('@')[0];
-  await window._fb.addDoc(window._fb.col(db, 'chat'), {
-    text: emoji, uid: currentUser.uid, nome, ts: window._fb.sts(), type: 'text'
+  await addDoc(collection(db, 'chat'), {
+    text: emoji, uid: currentUser.uid, nome, ts: serverTimestamp(), type: 'text'
   });
 }
 
@@ -640,8 +639,8 @@ async function searchGifs() {
 
 async function sendGif(url) {
   const nome = userProfile?.nome || currentUser.email.split('@')[0];
-  await window._fb.addDoc(window._fb.col(db, 'chat'), {
-    gif: url, uid: currentUser.uid, nome, ts: window._fb.sts(), type: 'gif'
+  await addDoc(collection(db, 'chat'), {
+    gif: url, uid: currentUser.uid, nome, ts: serverTimestamp(), type: 'gif'
   });
   document.getElementById('gifPicker').style.display = 'none';
 }
@@ -649,7 +648,7 @@ async function sendGif(url) {
 async function salvarPerfil() {
   const nome = document.getElementById('nomePerfilInput')?.value?.trim();
   if (!nome || nome.length < 2) return;
-  await window._fb.updateDoc(window._fb.docRef(db, 'users', currentUser.uid), { nome });
+  await updateDoc(doc(db, 'users', currentUser.uid), { nome });
   userProfile = { ...userProfile, nome };
   document.getElementById('perfilMsg').textContent = '✅ Nome salvo!';
   setTimeout(() => { const el = document.getElementById('perfilMsg'); if(el) el.textContent=''; }, 2000);
@@ -1313,12 +1312,6 @@ function showErr(msg) {
 }
 
 // ── AUTH STATE ──
-// Expose Firebase funcs for chat
-window._fb = {
-  col: collection, addDoc, sts: serverTimestamp,
-  docRef: doc, updateDoc
-};
-
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if (user) {
