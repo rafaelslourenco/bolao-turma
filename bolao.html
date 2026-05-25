@@ -348,9 +348,9 @@ async function autoSaveFavoritos() {
     if (!myBets[key] || myBets[key].auto) {
       const prep = PREP_SCORES[j.id];
       if (!j.especial) {
-        updates[key] = { winner: prep ? prep.winner : getFavorito(j.time1, j.time2), confirmed: false, especial: false, auto: true };
+        updates[key] = { winner: prep ? prep.winner : getFavorito(j.time1, j.time2), confirmed: true, especial: false, auto: true };
       } else if (prep) {
-        updates[key] = { g1: prep.g1, g2: prep.g2, especial: true, confirmed: false, auto: true };
+        updates[key] = { g1: prep.g1, g2: prep.g2, especial: true, confirmed: true, auto: true };
       }
     }
   });
@@ -360,28 +360,147 @@ async function autoSaveFavoritos() {
 }
 
 
+
+function renderPalpitesTodos() {
+  const jogosEncerrados = JOGOS_GRUPOS.filter(j => jogoFechado(j));
+  if (!jogosEncerrados.length) return '<div style="text-align:center;padding:3rem;color:#bbb;font-size:13px">Nenhum jogo encerrado ainda. Os palpites aparecem aqui após o início de cada jogo.</div>';
+
+  let h = '<div style="font-size:12px;color:#888;margin-bottom:12px">Palpites visíveis após o início de cada jogo.</div>';
+  jogosEncerrados.forEach(j => {
+    const r = allResults['jogo_' + j.id];
+    const chips = Object.entries(allBets).map(([uid, bets]) => {
+      const b = bets['jogo_' + j.id];
+      const nome = allUsers[uid]?.nome || allUsers[uid]?.email?.split('@')[0] || '?';
+      if (!b) return null;
+      let pStr = '';
+      if (!j.especial) pStr = b.winner==='time1'?j.time1.split(' ')[0]:b.winner==='time2'?j.time2.split(' ')[0]:'Emp';
+      else if (b.g1!==undefined) pStr = b.g1+'×'+b.g2;
+      return pStr ? {nome, pStr, uid} : null;
+    }).filter(Boolean);
+
+    h += '<div class="jogo-card" style="flex-direction:column;align-items:flex-start;gap:8px">';
+    h += '<div style="display:flex;justify-content:space-between;width:100%;align-items:center">';
+    h += '<div><span style="font-size:10px;color:#aaa">#'+j.id+' · '+j.data+' '+j.hora+'</span><br><span style="font-size:13px;font-weight:600">'+j.time1+' × '+j.time2+'</span></div>';
+    if (r && r.g1!==undefined) h += '<span style="font-size:15px;font-weight:700;color:#E8472A">'+r.g1+'×'+r.g2+'</span>';
+    h += '</div>';
+    if (chips.length) {
+      h += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
+      chips.forEach(c => {
+        const isEu = c.uid === currentUser.uid;
+        h += '<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:' + (isEu?'#FFF0EE':'#EEF2FF') + ';color:' + (isEu?'#E8472A':'#4F46E5') + '">' + c.nome + ': <b>' + c.pStr + '</b></span>';
+      });
+      h += '</div>';
+    } else {
+      h += '<span style="font-size:11px;color:#ccc">Nenhum palpite registrado</span>';
+    }
+    h += '</div>';
+  });
+  return h;
+}
+
 function renderRegulamento() {
-  return `<div class="section-card">
-    <div class="scard-title" style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Regulamento</div>
-    <p style="font-size:12px;color:#888;font-style:italic;margin-bottom:12px">Texto completo em breve — preparado pela organização com todo o humor que merece.</p>
-    <table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead><tr style="background:#FFF3E0">
-        <th style="padding:5px 7px;text-align:left;border:1px solid #FFE0B2;color:#E65100">Tipo de acerto</th>
-        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">1a fase</th>
-        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">16avos</th>
-        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Oitavas</th>
-        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Quartas</th>
-        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Semi</th>
-        <th style="padding:5px 7px;border:1px solid #FFE0B2;color:#E65100">Final</th>
-      </tr></thead>
-      <tbody>
-        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Vencedor/empate</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">5</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">7</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">8</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">9</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">12</td></tr>
-        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Vencedor + gols 1 time</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">7</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">11</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">12</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">13</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">15</td></tr>
-        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Vencedor + diferença gols</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">7</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">11</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">12</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">13</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">15</td></tr>
-        <tr><td style="padding:5px 7px;border:1px solid #f0ebe0;font-weight:500">Placar exato</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">10</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">13</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">15</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">16</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">18</td><td style="padding:5px 7px;border:1px solid #f0ebe0;text-align:center">20</td></tr>
-      </tbody>
-    </table>
-    <p style="font-size:11px;color:#aaa;margin-top:8px">* Jogos do Brasil valem 2× em todas as categorias</p>
+  return `<div style="max-width:620px;margin:0 auto">
+
+    <div style="font-size:13px;color:#666;line-height:1.8;margin-bottom:1.5rem">
+      A ideia é fácil: cada um faz seus palpites, acompanha a Copa, reclama das regras, esquece de apostar em três jogos, culpa o sistema e, no fim, alguém que "nem gosta tanto de futebol" provavelmente ganha.
+    </div>
+    <div style="font-size:13px;color:#666;line-height:1.8;margin-bottom:2rem">
+      Obviamente isso não poderia ser só "acertou, ganhou". Tem pontuação ponderada, jogo especial, multiplicador para o Brasil e uma quantidade de regra que só parece exagerada até alguém perder por 2 pontos e pedir auditoria.
+    </div>
+
+    <div style="border-left:3px solid #E8472A;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#E8472A;margin-bottom:10px">1. Apostas antes da Copa</div>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px">Antes do primeiro jogo, cada um escolhe: campeão, vice, dois semifinalistas, artilheiro e fase em que o Brasil cai.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;color:#777;margin-bottom:10px">
+        <thead><tr style="border-bottom:1px solid #f0e8e0"><th style="text-align:left;padding:4px 6px;font-weight:500">Acerto</th><th style="text-align:right;padding:4px 6px;font-weight:500">Pts</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Campeão ou vice na posição certa</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">20</td></tr>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Acertou finalista, mas inverteu posição</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">15</td></tr>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Acertou top 4, mas errou a posição</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">10</td></tr>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Artilheiro</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">15</td></tr>
+          <tr><td style="padding:4px 6px">Fase do Brasil</td><td style="padding:4px 6px;text-align:right;font-weight:600;color:#E8472A">15</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:#888;line-height:1.7">"Brasil chega à final" vale para campeão ou vice, porque aqui ainda existe alguma esperança institucional.</p>
+    </div>
+
+    <div style="border-left:3px solid #E8472A;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#E8472A;margin-bottom:10px">2. Fase de grupos</div>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px">Na maioria dos jogos da fase de grupos, basta escolher vencedor ou empate.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;color:#777;margin-bottom:10px">
+        <thead><tr style="border-bottom:1px solid #f0e8e0"><th style="text-align:left;padding:4px 6px;font-weight:500">Resultado</th><th style="text-align:right;padding:4px 6px;font-weight:500">Pts</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Acertou</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">5</td></tr>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Errou</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;color:#999">0</td></tr>
+          <tr><td style="padding:4px 6px">Justificou bem</td><td style="padding:4px 6px;text-align:right;color:#999">0 também</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px">O site já vem com palpites pré-preenchidos pelo ranking da FIFA, para ajudar quem não está tão comprometido com Burkina Faso × Curaçao às 14h.</p>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px">Se você não mexer, <strong>a aposta pré-preenchida conta</strong>. Talvez não mexer em nada seja uma estratégia vencedora? Talvez. Mas não contem isso para muita gente, senão vira consenso e estraga a graça.</p>
+      <p style="font-size:13px;color:#555;line-height:1.8">Ainda assim, você pode alterar qualquer palpite antes do jogo começar. O sistema tenta facilitar a vida, mas não vai impedir ninguém de ter convicções próprias e estatisticamente questionáveis.</p>
+    </div>
+
+    <div style="border-left:3px solid #E8472A;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#E8472A;margin-bottom:10px">3. Jogos especiais da fase de grupos</div>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px">A fase de grupos tem 72 jogos. Como ninguém aqui precisa provar amor à Copa apostando placar exato em todos eles, alguns poucos jogos foram marcados como especiais. Nesses jogos, você aposta o placar.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;color:#777;margin-bottom:10px">
+        <thead><tr style="border-bottom:1px solid #f0e8e0"><th style="text-align:left;padding:4px 6px;font-weight:500">Acerto</th><th style="text-align:right;padding:4px 6px;font-weight:500">Pts</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Vencedor ou empate</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">5</td></tr>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Vencedor + gols de um time</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">7</td></tr>
+          <tr><td style="padding:4px 6px;border-bottom:1px solid #faf5f0">Vencedor + diferença de gols</td><td style="padding:4px 6px;border-bottom:1px solid #faf5f0;text-align:right;font-weight:600;color:#E8472A">7</td></tr>
+          <tr><td style="padding:4px 6px">Placar exato</td><td style="padding:4px 6px;text-align:right;font-weight:600;color:#E8472A">10</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:13px;color:#555;line-height:1.8">Errou o vencedor? Zero. Mesmo que seu raciocínio tenha sido lindo, bayesiano e apresentado com confiança.</p>
+    </div>
+
+    <div style="border-left:3px solid #E8472A;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#E8472A;margin-bottom:10px">4. Mata-mata</div>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px">No mata-mata, todos os jogos são por placar exato. A pontuação sobe conforme a fase, porque acertar uma final obviamente precisa valer mais do que acertar um 16-avos entre duas seleções que metade do grupo vai descobrir que existem no dia.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;color:#777;margin-bottom:10px">
+        <thead><tr style="border-bottom:1px solid #f0e8e0">
+          <th style="text-align:left;padding:4px 5px;font-weight:500">Acerto</th>
+          <th style="text-align:right;padding:4px 4px;font-weight:500">16av</th>
+          <th style="text-align:right;padding:4px 4px;font-weight:500">Oit</th>
+          <th style="text-align:right;padding:4px 4px;font-weight:500">Qrt</th>
+          <th style="text-align:right;padding:4px 4px;font-weight:500">Semi</th>
+          <th style="text-align:right;padding:4px 4px;font-weight:500">3/4</th>
+          <th style="text-align:right;padding:4px 4px;font-weight:500">Final</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:4px 5px;border-bottom:1px solid #faf5f0">Vencedor/empate</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">7</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">8</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">9</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">10</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">10</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">12</td></tr>
+          <tr><td style="padding:4px 5px;border-bottom:1px solid #faf5f0">Vencedor + gols 1 time</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">10</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">11</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">12</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">13</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">13</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">15</td></tr>
+          <tr><td style="padding:4px 5px;border-bottom:1px solid #faf5f0">Vencedor + diff gols</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">10</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">11</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">12</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">13</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">13</td><td style="padding:4px 4px;border-bottom:1px solid #faf5f0;text-align:right;color:#E8472A;font-weight:600">15</td></tr>
+          <tr><td style="padding:4px 5px">Placar exato</td><td style="padding:4px 4px;text-align:right;color:#E8472A;font-weight:600">13</td><td style="padding:4px 4px;text-align:right;color:#E8472A;font-weight:600">15</td><td style="padding:4px 4px;text-align:right;color:#E8472A;font-weight:600">16</td><td style="padding:4px 4px;text-align:right;color:#E8472A;font-weight:600">18</td><td style="padding:4px 4px;text-align:right;color:#E8472A;font-weight:600">18</td><td style="padding:4px 4px;text-align:right;color:#E8472A;font-weight:600">20</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:#888;line-height:1.7">Ninguém precisa decorar isso. O site calcula. Não chamem o Papa para abrir uma planilha financeira do bolão às 23h17 de domingo.</p>
+    </div>
+
+    <div style="border-left:3px solid #009C3B;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#009C3B;margin-bottom:10px">5. Regra do Brasil 🇧🇷</div>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:8px">Todo jogo do Brasil vale <strong>o dobro</strong>.</p>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:4px">Porque é Copa.<br>Porque todo mundo vira comentarista.<br>Porque alguém vai falar do Neymar, mesmo que ele esteja em campo, no banco, lesionado, aposentado ou só postando story.<br>E porque sofrimento nacional merece multiplicador.</p>
+    </div>
+
+    <div style="border-left:3px solid #E8472A;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#E8472A;margin-bottom:10px">6. Tempo válido</div>
+      <p style="font-size:13px;color:#555;line-height:1.8">Vale sempre o placar ao fim dos <strong>90 minutos</strong>. Prorrogação e pênaltis não contam para o bolão. Contam apenas para ansiedade, trauma e mensagens atravessadas no grupo.</p>
+    </div>
+
+    <div style="border-left:3px solid #E8472A;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#E8472A;margin-bottom:10px">7. Prazo</div>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-bottom:10px">Cada jogo fecha automaticamente no horário de início. Depois que o jogo começou, não dá mais para alterar o palpite.</p>
+      <p style="font-size:12px;color:#999;line-height:1.8">Não tem: "esqueci" · "achei que era horário dos EUA" · "estava na chácara" · "o Honda estava explicando uma regra" · "o Berts estava reclamando e me desconcentrou"</p>
+      <p style="font-size:13px;color:#555;line-height:1.8;margin-top:8px">O sistema será frio. Como toda boa decisão baseada em dados deveria ser, mas raramente é.</p>
+    </div>
+
+    <div style="border-left:3px solid #E8472A;padding-left:14px;margin-bottom:2rem">
+      <div style="font-size:14px;font-weight:700;color:#E8472A;margin-bottom:10px">8. Ranking</div>
+      <p style="font-size:13px;color:#555;line-height:1.8">O ranking atualiza no site conforme os resultados entram. Estar em primeiro cedo não significa nada. Estar em último cedo também não. Mas todos sabemos que haverá print.</p>
+    </div>
+
   </div>`;
 }
 function render() {
@@ -453,6 +572,7 @@ function renderMain() {
     <button class="tab" data-tab="especiais">Apostas Especiais</button>
     <button class="tab" data-tab="ranking">Ranking</button>
     <button class="tab" data-tab="resultados">Resultados</button>
+    <button class="tab" data-tab="palpites-todos">Palpites</button>
     <button class="tab" data-tab="regulamento">Regulamento</button>
     ${isAdmin ? '<button class="tab" data-tab="admin">Admin</button>' : ''}
   </div>
@@ -596,10 +716,22 @@ function renderJogoCard(jogo, fase) {
       const cls1 = w==='time1' ? (confirmed?' sel':' prefilled') : '';
       const clsE = w==='empate' ? (confirmed?' sel':' prefilled') : '';
       const cls2 = w==='time2' ? (confirmed?' sel':' prefilled') : '';
-      betHtml = `<div class="winner-btns">
-        <button class="wbtn${cls1}" data-jid="${jogo.id}" data-w="time1">${jogo.time1.split(' ')[0]}</button>
-        <button class="wbtn${clsE}" data-jid="${jogo.id}" data-w="empate">Emp</button>
-        <button class="wbtn${cls2}" data-jid="${jogo.id}" data-w="time2">${jogo.time2.split(' ')[0]}</button>
+      // Vote percentages
+      const totalVotes = Object.values(allBets).filter(b => b['jogo_'+jogo.id]?.winner).length;
+      const v1 = totalVotes ? Math.round(Object.values(allBets).filter(b=>b['jogo_'+jogo.id]?.winner==='time1').length/totalVotes*100) : 0;
+      const vE = totalVotes ? Math.round(Object.values(allBets).filter(b=>b['jogo_'+jogo.id]?.winner==='empate').length/totalVotes*100) : 0;
+      const v2 = totalVotes ? 100-v1-vE : 0;
+      betHtml = `<div>
+        <div class="winner-btns">
+          <button class="wbtn${cls1}" data-jid="${jogo.id}" data-w="time1">${jogo.time1.split(' ')[0]}</button>
+          <button class="wbtn${clsE}" data-jid="${jogo.id}" data-w="empate">Emp</button>
+          <button class="wbtn${cls2}" data-jid="${jogo.id}" data-w="time2">${jogo.time2.split(' ')[0]}</button>
+        </div>
+        ${totalVotes>0?`<div style="display:flex;gap:4px;margin-top:3px">
+          <span style="flex:1;text-align:center;font-size:9px;color:#bbb">${v1}%</span>
+          <span style="flex:1;text-align:center;font-size:9px;color:#bbb">${vE}%</span>
+          <span style="flex:1;text-align:center;font-size:9px;color:#bbb">${v2}%</span>
+        </div>`:''}
       </div>`;
     }
   } else {
@@ -783,6 +915,7 @@ function bindEvents() {
       else if (tab==='ranking') el.innerHTML = renderRanking();
       else if (tab==='resultados') el.innerHTML = renderResultados();
       else if (tab==='regulamento') el.innerHTML = renderRegulamento();
+      else if (tab==='palpites-todos') el.innerHTML = renderPalpitesTodos();
       else if (tab==='admin') el.innerHTML = renderAdmin();
       bindInner();
     });
