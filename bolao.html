@@ -9,7 +9,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, getDocs, collection, onSnapshot, serverTimestamp, query, orderBy, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, onSnapshot, serverTimestamp, query, orderBy, updateDoc, addDoc, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC0yH3-SGDKuB60HD0IO8M4Dyj7RC85M1g",
@@ -23,6 +23,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+const APELIDOS = {
+  'República da Coreia':'CoreiaSul','República Tcheca':'RepTcheca',
+  'Costa do Marfim':'CostaMarfim','Arábia Saudita':'Arabia S',
+  'Bósnia e Herzegovina':'Bósnia','Países Baixos':'Holanda',
+  'Nova Zelândia':'N.Zelândia','RD Congo':'Congo',
+  'Estados Unidos':'EUA'
+};
+function ape(t) { return APELIDOS[t] || t.split(' ')[0]; }
 
 // ── ADMINS (adicione emails dos admins aqui) ──
 const FOTO_URI = 'https://rafaelslourenco.github.io/bolao-turma/turma.jpg';
@@ -348,9 +357,9 @@ async function autoSaveFavoritos() {
     if (!myBets[key] || myBets[key].auto) {
       const prep = PREP_SCORES[j.id];
       if (!j.especial) {
-        updates[key] = { winner: prep ? prep.winner : getFavorito(j.time1, j.time2), confirmed: true, especial: false, auto: true };
+        updates[key] = { winner: prep ? prep.winner : getFavorito(j.time1, j.time2), confirmed: false, especial: false, auto: true };
       } else if (prep) {
-        updates[key] = { g1: prep.g1, g2: prep.g2, especial: true, confirmed: true, auto: true };
+        updates[key] = { g1: prep.g1, g2: prep.g2, especial: true, confirmed: false, auto: true };
       }
     }
   });
@@ -373,7 +382,7 @@ function renderPalpitesTodos() {
       const nome = allUsers[uid]?.nome || allUsers[uid]?.email?.split('@')[0] || '?';
       if (!b) return null;
       let pStr = '';
-      if (!j.especial) pStr = b.winner==='time1'?j.time1.split(' ')[0]:b.winner==='time2'?j.time2.split(' ')[0]:'Emp';
+      if (!j.especial) pStr = b.winner==='time1'?ape(j.time1):b.winner==='time2'?ape(j.time2):'Emp';
       else if (b.g1!==undefined) pStr = b.g1+'×'+b.g2;
       return pStr ? {nome, pStr, uid} : null;
     }).filter(Boolean);
@@ -503,6 +512,149 @@ function renderRegulamento() {
 
   </div>`;
 }
+
+function renderPerfil() {
+  const nome = userProfile?.nome || '';
+  return `<div class="scard">
+    <div class="scard-title">👤 Meu Perfil</div>
+    <p style="font-size:13px;color:#888;margin-bottom:16px">Mude seu apelido quando quiser — é assim que você aparece no ranking e no chat.</p>
+    <div style="display:flex;gap:10px;align-items:center;max-width:400px">
+      <input id="nomePerfilInput" type="text" value="${nome}" placeholder="seu apelido" style="flex:1;padding:9px 12px;border:1.5px solid #eee;border-radius:8px;font-size:14px;outline:none">
+      <button id="btnSalvarPerfil" style="padding:9px 16px;background:#E8472A;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Salvar</button>
+    </div>
+    <p id="perfilMsg" style="font-size:12px;color:#009C3B;margin-top:8px;min-height:16px"></p>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #f0ebe0">
+      <div style="font-size:12px;color:#bbb">Email: ${currentUser.email}</div>
+    </div>
+  </div>`;
+}
+
+
+function renderChat() {
+  return `<div class="scard" style="padding:0">
+    <div style="padding:14px 16px;border-bottom:1px solid #f0ebe0;font-size:13px;font-weight:600">💬 Chat da Turma</div>
+    <div id="chatMsgs" style="height:380px;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+      <div style="text-align:center;color:#bbb;font-size:12px;padding:2rem">Carregando mensagens...</div>
+    </div>
+    <div style="padding:10px 12px;border-top:1px solid #f0ebe0">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input id="chatInput" type="text" placeholder="mensagem..." style="flex:1;padding:8px 12px;border:1.5px solid #eee;border-radius:20px;font-size:13px;outline:none" maxlength="300">
+        <button id="btnSendMsg" style="padding:8px 16px;background:#E8472A;color:#fff;border:none;border-radius:20px;font-size:13px;cursor:pointer">Enviar</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:#bbb">Reações:</span>
+        ${['😂','🔥','🇧🇷','⚽','🤦','😤','🎉','💀','🤣','👏'].map(e => 
+          `<button onclick="sendReaction('${e}')" style="padding:3px 7px;border:0.5px solid #eee;border-radius:8px;background:#fff;cursor:pointer;font-size:14px">${e}</button>`
+        ).join('')}
+        <button id="btnGif" style="padding:3px 10px;border:0.5px solid #eee;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;color:#666">GIF</button>
+      </div>
+      <div id="gifPicker" style="display:none;margin-top:8px">
+        <input id="gifSearch" type="text" placeholder="buscar GIF..." style="width:100%;padding:6px 10px;border:1.5px solid #eee;border-radius:8px;font-size:12px;outline:none;margin-bottom:6px">
+        <div id="gifResults" style="display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+let chatUnsub = null;
+
+function initChat() {
+  // Bind events
+  document.getElementById('btnSendMsg')?.addEventListener('click', sendMsg);
+  document.getElementById('chatInput')?.addEventListener('keypress', e => { if(e.key==='Enter') sendMsg(); });
+  document.getElementById('btnGif')?.addEventListener('click', () => {
+    const gp = document.getElementById('gifPicker');
+    gp.style.display = gp.style.display==='none'?'block':'none';
+  });
+  document.getElementById('gifSearch')?.addEventListener('input', searchGifs);
+  
+  // Bind perfil save if on perfil tab
+  document.getElementById('btnSalvarPerfil')?.addEventListener('click', salvarPerfil);
+
+  // Listen to chat messages
+  if (chatUnsub) chatUnsub();
+  const { collection: col2, query: q2, orderBy: ob, limit: lim, onSnapshot: ons } = window._fb;
+  chatUnsub = ons(q2(col2(db, 'chat'), ob('ts', 'asc'), lim(100)), snap => {
+    const el = document.getElementById('chatMsgs');
+    if (!el) { chatUnsub(); return; }
+    if (!snap.docs.length) { el.innerHTML = '<div style="text-align:center;color:#bbb;font-size:12px;padding:2rem">Seja o primeiro a mandar uma mensagem! 🎉</div>'; return; }
+    el.innerHTML = snap.docs.map(d => {
+      const m = d.data();
+      const isEu = m.uid === currentUser.uid;
+      const nome = m.nome || '?';
+      const initials = nome.slice(0,2).toUpperCase();
+      const colors = ['#E8472A','#009C3B','#1565C0','#7B1FA2','#E65100'];
+      const color = colors[nome.charCodeAt(0) % colors.length];
+      const time = m.ts ? new Date(m.ts.seconds*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+      if (m.type==='gif') {
+        return `<div style="display:flex;flex-direction:${isEu?'row-reverse':'row'};gap:6px;align-items:flex-end">
+          <div style="width:26px;height:26px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#fff;flex-shrink:0">${initials}</div>
+          <div>
+            <div style="font-size:9px;color:#bbb;margin-bottom:2px;${isEu?'text-align:right':''}">${nome} · ${time}</div>
+            <img src="${m.gif}" style="max-width:160px;border-radius:8px;display:block">
+          </div>
+        </div>`;
+      }
+      return `<div style="display:flex;flex-direction:${isEu?'row-reverse':'row'};gap:6px;align-items:flex-end">
+        <div style="width:26px;height:26px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#fff;flex-shrink:0">${initials}</div>
+        <div style="max-width:75%">
+          <div style="font-size:9px;color:#bbb;margin-bottom:2px;${isEu?'text-align:right':''}">${nome} · ${time}</div>
+          <div style="padding:7px 11px;border-radius:${isEu?'12px 12px 2px 12px':'12px 12px 12px 2px'};background:${isEu?'#E8472A':'#f0ebe0'};color:${isEu?'#fff':'#333'};font-size:13px">${m.text}</div>
+        </div>
+      </div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  });
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('chatInput');
+  const text = inp?.value?.trim();
+  if (!text) return;
+  inp.value = '';
+  const nome = userProfile?.nome || currentUser.email.split('@')[0];
+  await window._fb.addDoc(window._fb.col(db, 'chat'), {
+    text, uid: currentUser.uid, nome, ts: window._fb.sts(), type: 'text'
+  });
+}
+
+async function sendReaction(emoji) {
+  const nome = userProfile?.nome || currentUser.email.split('@')[0];
+  await window._fb.addDoc(window._fb.col(db, 'chat'), {
+    text: emoji, uid: currentUser.uid, nome, ts: window._fb.sts(), type: 'text'
+  });
+}
+
+async function searchGifs() {
+  const q = document.getElementById('gifSearch')?.value;
+  if (!q || q.length < 2) return;
+  const GIPHY_KEY = 'dc6zaTOxFJmzC'; // public beta key
+  const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=12&rating=pg`);
+  const data = await res.json();
+  const el = document.getElementById('gifResults');
+  if (!el) return;
+  el.innerHTML = data.data.map(g => 
+    `<img src="${g.images.fixed_height_small.url}" style="height:80px;border-radius:6px;cursor:pointer" onclick="sendGif('${g.images.fixed_height.url}')">`
+  ).join('');
+}
+
+async function sendGif(url) {
+  const nome = userProfile?.nome || currentUser.email.split('@')[0];
+  await window._fb.addDoc(window._fb.col(db, 'chat'), {
+    gif: url, uid: currentUser.uid, nome, ts: window._fb.sts(), type: 'gif'
+  });
+  document.getElementById('gifPicker').style.display = 'none';
+}
+
+async function salvarPerfil() {
+  const nome = document.getElementById('nomePerfilInput')?.value?.trim();
+  if (!nome || nome.length < 2) return;
+  await window._fb.updateDoc(window._fb.docRef(db, 'users', currentUser.uid), { nome });
+  userProfile = { ...userProfile, nome };
+  document.getElementById('perfilMsg').textContent = '✅ Nome salvo!';
+  setTimeout(() => { const el = document.getElementById('perfilMsg'); if(el) el.textContent=''; }, 2000);
+}
+
 function render() {
   if (currentUser && userProfile && userProfile.needsName) {
     document.getElementById('app').innerHTML = renderSetupName();
@@ -589,6 +741,8 @@ function renderMain() {
     <button class="tab" data-tab="ranking">Ranking</button>
     <button class="tab" data-tab="resultados">Resultados</button>
     <button class="tab" data-tab="palpites-todos">Palpites</button>
+    <button class="tab" data-tab="perfil">Meu Perfil</button>
+    <button class="tab" data-tab="chat">Chat</button>
     <button class="tab" data-tab="regulamento">Regulamento</button>
     ${isAdmin ? '<button class="tab" data-tab="admin">Admin</button>' : ''}
   </div>
@@ -661,9 +815,9 @@ function renderPalpites() {
   }
 
   if (proximoBrasil) {
-    h += '<div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border:2px solid #009C3B;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">'
+    h += '<div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border:2px solid #009C3B;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="document.getElementById(\'jogo-'+proximoBrasil.id+'\').scrollIntoView({behavior:\'smooth\'})">'
       + '<span style="font-size:22px">🇧🇷</span>'
-      + '<div><div style="font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.06em">Próximo jogo do Brasil — vale 2×</div>'
+      + '<div><div style="font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.06em">Próximo jogo do Brasil — vale 2× · clique para apostar</div>'
       + '<div style="font-size:13px;font-weight:600;color:#1B5E20">' + proximoBrasil.time1 + ' × ' + proximoBrasil.time2 + ' · ' + proximoBrasil.data + ' às ' + proximoBrasil.hora + '</div>'
       + '</div></div>';
   }
@@ -806,9 +960,9 @@ function renderJogoCard(jogo, fase) {
       const v2 = totalVotes ? 100-v1-vE : 0;
       betHtml = `<div>
         <div class="winner-btns">
-          <button class="wbtn${cls1}" data-jid="${jogo.id}" data-w="time1">${jogo.time1.split(' ')[0]}</button>
+          <button class="wbtn${cls1}" data-jid="${jogo.id}" data-w="time1">${ape(jogo.time1)}</button>
           <button class="wbtn${clsE}" data-jid="${jogo.id}" data-w="empate">Emp</button>
-          <button class="wbtn${cls2}" data-jid="${jogo.id}" data-w="time2">${jogo.time2.split(' ')[0]}</button>
+          <button class="wbtn${cls2}" data-jid="${jogo.id}" data-w="time2">${ape(jogo.time2)}</button>
         </div>
         ${totalVotes>0?`<div style="display:flex;gap:4px;margin-top:3px">
           <span style="flex:1;text-align:center;font-size:9px;color:#bbb">${v1}%</span>
@@ -853,7 +1007,7 @@ function renderJogoCard(jogo, fase) {
     if (palpites.length) outrosPalpites = `<div class="outros-palpites"><span class="outros-label">Palpites:</span> ${palpites.join('')}</div>`;
   }
 
-  return `<div class="jogo-card${jogo.brasil?' brasil-card':''}${fechado?' fechado':''}">
+  return `<div id="jogo-${jogo.id}" class="jogo-card${jogo.brasil?' brasil-card':''}${fechado?' fechado':''}">
     <div class="jogo-header">
       <span class="jogo-num">#${jogo.id}</span>
       <span class="jogo-dt">${jogo.hora} (Brasília)</span>
@@ -981,6 +1135,7 @@ function renderAdmin() {
 
 // ── BIND EVENTS ──
 function bindEvents() {
+  document.getElementById('btnSalvarPerfil')?.addEventListener('click', salvarPerfil);
   document.getElementById('btnSalvarNome')?.addEventListener('click', async () => {
     const nome = document.getElementById('nomeInput')?.value?.trim();
     if (!nome || nome.length < 2) { document.getElementById('nomeErr').textContent = 'Digite pelo menos 2 caracteres'; return; }
@@ -1005,6 +1160,8 @@ function bindEvents() {
       else if (tab==='ranking') el.innerHTML = renderRanking();
       else if (tab==='resultados') el.innerHTML = renderResultados();
       else if (tab==='regulamento') el.innerHTML = renderRegulamento();
+      else if (tab==='perfil') el.innerHTML = renderPerfil();
+      else if (tab==='chat') { el.innerHTML = renderChat(); initChat(); }
       else if (tab==='palpites-todos') el.innerHTML = renderPalpitesTodos();
       else if (tab==='admin') el.innerHTML = renderAdmin();
       bindInner();
@@ -1156,6 +1313,12 @@ function showErr(msg) {
 }
 
 // ── AUTH STATE ──
+// Expose Firebase funcs for chat
+window._fb = {
+  col: collection, addDoc, sts: serverTimestamp,
+  docRef: doc, updateDoc
+};
+
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if (user) {
